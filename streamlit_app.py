@@ -49,10 +49,14 @@ pasted_data = st.text_area(
 PROMPT_TEMPLATE_FULL = """
 Anda adalah sistem klasifikasi musik Indonesia. Berdasarkan lirik dan judul lagu berikut, rekomendasikan rating yang paling sesuai dari kategori ini: "SU (semua umur)", "13+", "17+", atau "21+".
 
-- **SU (semua umur)**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa.
-- **13+**: Cocok untuk remaja. Dapat berisi tema percintaan ringan, sedikit kata-kata kasar (non-eksplisit), atau nada sedih/emosional.
-- **17+**: Cocok untuk remaja akhir dan dewasa. Dapat berisi tema dewasa yang lebih jelas, referensi seksual non-eksplisit, atau kekerasan.
-- **21+**: Cocok untuk dewasa. Berisi konten seksual eksplisit, kekerasan ekstrem, atau penggunaan bahasa yang sangat vulgar.
+- **SU**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa. Tema ramah keluarga, persahabatan, alam, dan motivasi. Tidak ada referensi seksualitas, narkoba, atau konflik serius.
+- **13+**: Cocok untuk remaja. Boleh mengandung tema percintaan ringan (patah hati, kerinduan). Boleh ada sedikit kata kasar (non-eksplisit) atau ekspresi emosional. Tidak ada konten seksual, kekerasan grafis, atau bahasa vulgar.
+- **17+**: Cocok untuk remaja akhir dan dewasa. Boleh ada tema dewasa (konflik hubungan, pengkhianatan, kekerasan implisit). Boleh mengandung kiasan sugestif atau bahasa agak kasar (tidak eksplisit). Tidak ada deskripsi seksual gamblang atau kekerasan ekstrem.
+- **21+**: Cocok untuk dewasa. Boleh mengandung konten seksual eksplisit, kekerasan grafis, atau bahasa vulgar berat. Judul/lirik boleh bersifat provokatif atau sangat eksplisit. Contoh: Deskripsi seksual mendetail, adegan sadis, atau kata-kata makian ekstrem.
+
+Aturan Tambahan:
+Jika konten berada di batas dua kategori, gunakan rating yang lebih tinggi.
+Jika ragu, tanyakan: "Apakah ini pantas untuk usia di bawah kategori ini?"
 
 Analisis lirik dan judul di bawah ini:
 Judul: {title}
@@ -64,10 +68,14 @@ Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 're
 PROMPT_TEMPLATE_RATING_ONLY = """
 Anda adalah sistem klasifikasi musik Indonesia. Berdasarkan lirik dan judul lagu berikut, rekomendasikan rating yang paling sesuai dari kategori ini: "SU (semua umur)", "13+", "17+", atau "21+".
 
-- **SU (semua umur)**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa.
-- **13+**: Cocok untuk remaja. Dapat berisi tema percintaan ringan, sedikit kata-kata kasar (non-eksplisit), atau nada sedih/emosional.
-- **17+**: Cocok untuk remaja akhir dan dewasa. Dapat berisi tema dewasa yang lebih jelas, referensi seksual non-eksplisit, atau kekerasan.
-- **21+**: Cocok untuk dewasa. Berisi konten seksual eksplisit, kekerasan ekstrem, atau penggunaan bahasa yang sangat vulgar.
+- **SU**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa. Tema ramah keluarga, persahabatan, alam, dan motivasi. Tidak ada referensi seksualitas, narkoba, atau konflik serius.
+- **13+**: Cocok untuk remaja. Boleh mengandung tema percintaan ringan (patah hati, kerinduan). Boleh ada sedikit kata kasar (non-eksplisit) atau ekspresi emosional. Tidak ada konten seksual, kekerasan grafis, atau bahasa vulgar.
+- **17+**: Cocok untuk remaja akhir dan dewasa. Boleh ada tema dewasa (konflik hubungan, pengkhianatan, kekerasan implisit). Boleh mengandung kiasan sugestif atau bahasa agak kasar (tidak eksplisit). Tidak ada deskripsi seksual gamblang atau kekerasan ekstrem.
+- **21+**: Cocok untuk dewasa. Boleh mengandung konten seksual eksplisit, kekerasan grafis, atau bahasa vulgar berat. Judul/lirik boleh bersifat provokatif atau sangat eksplisit. Contoh: Deskripsi seksual mendetail, adegan sadis, atau kata-kata makian ekstrem.
+
+Aturan Tambahan:
+Jika konten berada di batas dua kategori, gunakan rating yang lebih tinggi.
+Jika ragu, tanyakan: "Apakah ini pantas untuk usia di bawah kategori ini?"
 
 Analisis lirik dan judul di bawah ini:
 Judul: {title}
