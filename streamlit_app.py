@@ -5,6 +5,7 @@ import io
 import os
 import time
 from openai import OpenAI
+import json
 
 # Konfigurasi Halaman Streamlit
 st.set_page_config(
@@ -54,7 +55,7 @@ Analisis lirik dan judul di bawah ini:
 Judul: {title}
 Lirik: {lyric}
 
-Berikan respons Anda dalam format JSON dengan properti 'rating' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+"}}.
+Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 'reason' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+", "reason": "Lirik membahas tema percintaan."}}.
 """
 
 def get_rating_from_model(model_name, title, lyric):
@@ -68,6 +69,7 @@ def get_rating_from_model(model_name, title, lyric):
     while retries < max_retries:
         try:
             prompt = PROMPT_TEMPLATE.format(title=title, lyric=lyric)
+            result_text = None
             
             if model_name == "Gemini":
                 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -84,11 +86,15 @@ def get_rating_from_model(model_name, title, lyric):
                 result_text = response.choices[0].message.content
 
             # Mengurai respons JSON
-            import json
-            result = json.loads(result_text)
-            rating = result.get('rating', 'Tidak Diketahui')
-            
-            return rating, reason
+            try:
+                result = json.loads(result_text)
+                rating = result.get('rating', 'Tidak Diketahui')
+                reason = result.get('reason', 'Tidak ada alasan yang diberikan.')
+                return rating, reason
+            except json.JSONDecodeError:
+                st.error(f"Respons dari {model_name} tidak valid: {result_text}")
+                return "Error", f"Respons tidak valid: {result_text}"
+
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memanggil {model_name} API: {e}")
             delay = base_delay * (2 ** retries)
@@ -116,6 +122,7 @@ if pasted_data and api_key:
         else:
             # Kolom baru untuk hasil analisis
             df['Predicted Rating'] = None
+            df['Reason'] = None
             
             progress_bar = st.progress(0)
             
@@ -128,6 +135,7 @@ if pasted_data and api_key:
                 
                 # Memperbarui DataFrame dengan data baru
                 df.at[index, 'Predicted Rating'] = rating
+                df.at[index, 'Reason'] = reason
                 
                 # Memperbarui progress bar
                 progress = (index + 1) / len(df)
