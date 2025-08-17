@@ -3,8 +3,9 @@ import pandas as pd
 import google.generativeai as genai
 import io
 import os
+import time  # Import library time
 
-# Configure Streamlit page settings.
+# Konfigurasi Halaman Streamlit
 st.set_page_config(
     page_title="Pemberi Label Lirik Otomatis",
     page_icon="🎶"
@@ -13,20 +14,20 @@ st.set_page_config(
 st.title("🎶 Aplikasi Pemberi Label Lirik Otomatis")
 st.markdown("Tempel baris dari file Excel atau CSV Anda untuk mendapatkan rekomendasi rating lirik secara otomatis menggunakan Gemini API.")
 
-# Input for the Gemini API Key.
+# Input API Key
 api_key = st.text_input("Masukkan Gemini API Key Anda:", type="password")
 
 if api_key:
     genai.configure(api_key=api_key)
 
-# Text area for pasting data.
+# Text area untuk menempel data
 pasted_data = st.text_area(
     "Tempel data (lirik dan judul lagu) di sini:",
     height=300,
     placeholder="Contoh: (Salin dari Excel, termasuk header)\nJudul\tLirik\nJudul Lagu 1\tLirik dari lagu pertama.\nJudul Lagu 2\tLirik dari lagu kedua."
 )
 
-# Prompt template for Gemini API.
+# Prompt Template untuk Gemini
 PROMPT_TEMPLATE = """
 Anda adalah sistem klasifikasi musik Indonesia. Berdasarkan lirik dan judul lagu berikut, rekomendasikan rating yang paling sesuai dari kategori ini: "SU (semua umur)", "13+", "17+", atau "21+".
 
@@ -44,14 +45,14 @@ Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 're
 
 def get_rating_from_gemini(title, lyric):
     """
-    Call Gemini API to get a rating recommendation.
+    Memanggil Gemini API untuk mendapatkan rekomendasi rating.
     """
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = PROMPT_TEMPLATE.format(title=title, lyric=lyric)
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         
-        # Parse the JSON response from Gemini.
+        # Mengurai respons JSON dari Gemini
         import json
         result = json.loads(response.text)
         
@@ -63,21 +64,21 @@ def get_rating_from_gemini(title, lyric):
         st.error(f"Terjadi kesalahan saat memanggil Gemini API: {e}")
         return "Error", f"Gagal mendapatkan rating: {str(e)}"
 
-# Logic to process the pasted data.
+# Logika untuk memproses data yang ditempel
 if pasted_data and api_key:
-    st.info("Data ditempel, memulai analisis...")
+    st.info("Data ditempel. Memulai analisis...")
     
     try:
-        # Create a file-like object from the pasted string.
+        # Buat objek seperti file dari string yang ditempel
         data_io = io.StringIO(pasted_data)
-        # Read the data, assuming it's tab-separated.
+        # Baca data, mengasumsikan dipisahkan oleh tab
         df = pd.read_csv(data_io, sep='\t')
         
-        # Validate required columns.
+        # Validasi kolom yang dibutuhkan
         if 'Title' not in df.columns or 'Lyric' not in df.columns:
             st.error("Data Anda harus memiliki kolom 'Title' dan 'Lyric'.")
         else:
-            # New columns for analysis results.
+            # Kolom baru untuk hasil analisis
             df['Predicted Rating'] = None
             df['Reason'] = None
             
@@ -87,24 +88,27 @@ if pasted_data and api_key:
                 title = row['Title']
                 lyric = row['Lyric']
                 
-                # Get rating from Gemini API.
+                # Mendapatkan rating dari Gemini API
                 rating, reason = get_rating_from_gemini(title, lyric)
                 
-                # Update the DataFrame with the new data.
+                # Memperbarui DataFrame dengan data baru
                 df.at[index, 'Predicted Rating'] = rating
                 df.at[index, 'Reason'] = reason
                 
-                # Update the progress bar.
+                # Menambahkan jeda untuk menghindari pembatasan kuota
+                time.sleep(5)
+                
+                # Memperbarui progress bar
                 progress = (index + 1) / len(df)
                 progress_bar.progress(progress)
             
             st.success("Analisis selesai! Berikut hasilnya:")
             st.dataframe(df)
 
-            # Download section.
+            # Bagian unduh
             st.header("Unduh Hasil")
             
-            # Prepare CSV file for download.
+            # Persiapan file CSV untuk diunduh
             csv_buffer = io.StringIO()
             df.to_csv(csv_buffer, index=False)
             csv_bytes = csv_buffer.getvalue().encode('utf-8')
@@ -115,7 +119,7 @@ if pasted_data and api_key:
                 mime="text/csv",
             )
             
-            # Prepare Excel file for download.
+            # Persiapan file Excel untuk diunduh
             excel_buffer = io.BytesIO()
             df.to_excel(excel_buffer, index=False, engine='openpyxl')
             excel_bytes = excel_buffer.getvalue()
