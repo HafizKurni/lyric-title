@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 import io
+import os
 
 # Konfigurasi Halaman Streamlit
 st.set_page_config(
@@ -10,7 +11,7 @@ st.set_page_config(
 )
 
 st.title("🎶 Aplikasi Pemberi Label Lirik Otomatis")
-st.markdown("Unggah file CSV Anda dan gunakan Gemini API untuk mendapatkan rekomendasi rating lirik secara otomatis.")
+st.markdown("Unggah file CSV atau Excel Anda untuk mendapatkan rekomendasi rating lirik secara otomatis menggunakan Gemini API.")
 
 # Input API Key
 api_key = st.text_input("Masukkan Gemini API Key Anda:", type="password")
@@ -18,8 +19,8 @@ api_key = st.text_input("Masukkan Gemini API Key Anda:", type="password")
 if api_key:
     genai.configure(api_key=api_key)
 
-# Input File CSV
-uploaded_file = st.file_uploader("Pilih file CSV Anda:", type="csv")
+# Input File CSV atau Excel
+uploaded_file = st.file_uploader("Pilih file Anda:", type=["csv", "xlsx"])
 
 # Prompt Template untuk Gemini
 PROMPT_TEMPLATE = """
@@ -61,13 +62,20 @@ def get_rating_from_gemini(title, lyric):
 if uploaded_file is not None and api_key:
     st.info("File diunggah, memulai analisis...")
     
-    # Membaca data CSV
+    # Membaca data dari file yang diunggah (CSV atau Excel)
     try:
-        df = pd.read_csv(uploaded_file)
-        
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+        if file_extension == '.csv':
+            df = pd.read_csv(uploaded_file)
+        elif file_extension == '.xlsx':
+            df = pd.read_excel(uploaded_file)
+        else:
+            st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel (.xlsx).")
+            st.stop()
+            
         # Validasi kolom
         if 'Title' not in df.columns or 'Lyric' not in df.columns:
-            st.error("File CSV harus memiliki kolom berjudul 'Title' dan 'Lyric'.")
+            st.error("File Anda harus memiliki kolom berjudul 'Title' dan 'Lyric'.")
         else:
             # Kolom baru untuk hasil analisis
             df['Predicted Rating'] = None
@@ -120,3 +128,4 @@ if uploaded_file is not None and api_key:
             
     except Exception as e:
         st.error(f"Terjadi kesalahan saat memproses file: {e}")
+
