@@ -54,7 +54,7 @@ Analisis lirik dan judul di bawah ini:
 Judul: {title}
 Lirik: {lyric}
 
-Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 'reason' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+", "reason": "Lirik membahas tema percintaan."}}.
+Berikan respons Anda dalam format JSON dengan properti 'rating' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+"}}.
 """
 
 def get_rating_from_model(model_name, title, lyric):
@@ -86,9 +86,7 @@ def get_rating_from_model(model_name, title, lyric):
             # Mengurai respons JSON
             import json
             result = json.loads(result_text)
-            
             rating = result.get('rating', 'Tidak Diketahui')
-            reason = result.get('reason', 'Tidak ada alasan yang diberikan.')
             
             return rating, reason
         except Exception as e:
@@ -118,7 +116,6 @@ if pasted_data and api_key:
         else:
             # Kolom baru untuk hasil analisis
             df['Predicted Rating'] = None
-            df['Reason'] = None
             
             progress_bar = st.progress(0)
             
@@ -131,7 +128,6 @@ if pasted_data and api_key:
                 
                 # Memperbarui DataFrame dengan data baru
                 df.at[index, 'Predicted Rating'] = rating
-                df.at[index, 'Reason'] = reason
                 
                 # Memperbarui progress bar
                 progress = (index + 1) / len(df)
