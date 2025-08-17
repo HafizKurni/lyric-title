@@ -85,6 +85,10 @@ def get_rating_from_model(model_name, title, lyric):
                 )
                 result_text = response.choices[0].message.content
 
+            # Menangani respons yang tidak valid (misalnya, jika berisi blok kode markdown)
+            if result_text and result_text.strip().startswith('```json') and result_text.strip().endswith('```'):
+                result_text = result_text.strip()[7:-3].strip()
+
             # Mengurai respons JSON
             try:
                 result = json.loads(result_text)
