@@ -45,24 +45,44 @@ Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 're
 
 def get_rating_from_gemini(title, lyric):
     """
-    Memanggil Gemini API untuk mendapatkan rekomendasi rating.
+    Memanggil Gemini API untuk mendapatkan rekomendasi rating dengan penanganan retry.
     """
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = PROMPT_TEMPLATE.format(title=title, lyric=lyric)
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-        
-        # Mengurai respons JSON dari Gemini
-        import json
-        result = json.loads(response.text)
-        
-        rating = result.get('rating', 'Tidak Diketahui')
-        reason = result.get('reason', 'Tidak ada alasan yang diberikan.')
-        
-        return rating, reason
-    except Exception as e:
-        st.error(f"Terjadi kesalahan saat memanggil Gemini API: {e}")
-        return "Error", f"Gagal mendapatkan rating: {str(e)}"
+    retries = 0
+    max_retries = 5
+    base_delay = 5  # Initial delay in seconds
+
+    while retries < max_retries:
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            prompt = PROMPT_TEMPLATE.format(title=title, lyric=lyric)
+            response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            
+            # Mengurai respons JSON dari Gemini
+            import json
+            result = json.loads(response.text)
+            
+            rating = result.get('rating', 'Tidak Diketahui')
+            reason = result.get('reason', 'Tidak ada alasan yang diberikan.')
+            
+            return rating, reason
+        except genai.types.BlockedPromptException as e:
+            # Handle 429 errors specifically
+            if "429 You exceeded your current quota" in str(e):
+                delay = base_delay * (2 ** retries)
+                st.warning(f"Batas kuota terlampaui. Menunggu {delay} detik sebelum mencoba kembali...")
+                time.sleep(delay)
+                retries += 1
+            else:
+                # Other BlockedPromptExceptions (e.g., safety issues)
+                st.error(f"Terjadi kesalahan saat memanggil Gemini API: {e}")
+                return "Error", f"Permintaan diblokir: {str(e)}"
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat memanggil Gemini API: {e}")
+            return "Error", f"Gagal mendapatkan rating: {str(e)}"
+
+    st.error("Gagal mendapatkan rating setelah beberapa kali percobaan. Silakan coba lagi nanti.")
+    return "Error", "Gagal setelah percobaan berulang."
+
 
 # Logika untuk memproses data yang ditempel
 if pasted_data and api_key:
@@ -94,9 +114,6 @@ if pasted_data and api_key:
                 # Memperbarui DataFrame dengan data baru
                 df.at[index, 'Predicted Rating'] = rating
                 df.at[index, 'Reason'] = reason
-                
-                # Menambahkan jeda untuk menghindari pembatasan kuota
-                time.sleep(5)
                 
                 # Memperbarui progress bar
                 progress = (index + 1) / len(df)
@@ -132,4 +149,3 @@ if pasted_data and api_key:
             
     except Exception as e:
         st.error(f"Terjadi kesalahan saat memproses data: {e}")
-
