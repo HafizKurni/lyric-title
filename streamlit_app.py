@@ -19,7 +19,7 @@ st.markdown("Pilih model AI, masukkan API key, dan tempel data lirik untuk menda
 # Pemilihan Model AI
 selected_model = st.selectbox(
     "Pilih Model AI:",
-    ["Gemini", "DeepSeek"]
+    ["DeepSeek", "Gemini"]
 )
 
 # Input API Key berdasarkan pilihan model
@@ -35,6 +35,9 @@ else:
     else:
         client = None
 
+# Optional reasoning checkbox
+reasoning_enabled = st.checkbox("Sertakan Alasan (Reasoning)", value=False)
+
 # Text area untuk menempel data
 pasted_data = st.text_area(
     "Tempel data (lirik dan judul lagu) di sini:",
@@ -43,7 +46,7 @@ pasted_data = st.text_area(
 )
 
 # Prompt Template untuk AI
-PROMPT_TEMPLATE = """
+PROMPT_TEMPLATE_FULL = """
 Anda adalah sistem klasifikasi musik Indonesia. Berdasarkan lirik dan judul lagu berikut, rekomendasikan rating yang paling sesuai dari kategori ini: "SU (semua umur)", "13+", "17+", atau "21+".
 
 - **SU (semua umur)**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa.
@@ -58,7 +61,22 @@ Lirik: {lyric}
 Berikan respons Anda dalam format JSON dengan properti 'rating' (string) dan 'reason' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+", "reason": "Lirik membahas tema percintaan."}}.
 """
 
-def get_rating_from_model(model_name, title, lyric):
+PROMPT_TEMPLATE_RATING_ONLY = """
+Anda adalah sistem klasifikasi musik Indonesia. Berdasarkan lirik dan judul lagu berikut, rekomendasikan rating yang paling sesuai dari kategori ini: "SU (semua umur)", "13+", "17+", atau "21+".
+
+- **SU (semua umur)**: Cocok untuk semua kalangan. Tidak ada kata-kata kotor, kekerasan, atau tema dewasa.
+- **13+**: Cocok untuk remaja. Dapat berisi tema percintaan ringan, sedikit kata-kata kasar (non-eksplisit), atau nada sedih/emosional.
+- **17+**: Cocok untuk remaja akhir dan dewasa. Dapat berisi tema dewasa yang lebih jelas, referensi seksual non-eksplisit, atau kekerasan.
+- **21+**: Cocok untuk dewasa. Berisi konten seksual eksplisit, kekerasan ekstrem, atau penggunaan bahasa yang sangat vulgar.
+
+Analisis lirik dan judul di bawah ini:
+Judul: {title}
+Lirik: {lyric}
+
+Berikan respons Anda dalam format JSON dengan properti 'rating' (string). Pastikan respons hanya berupa objek JSON. Contoh: {{"rating": "13+"}}.
+"""
+
+def get_rating_from_model(model_name, title, lyric, reasoning_enabled):
     """
     Memanggil API AI yang dipilih untuk mendapatkan rekomendasi rating.
     """
@@ -66,20 +84,22 @@ def get_rating_from_model(model_name, title, lyric):
     max_retries = 5
     base_delay = 5  # Initial delay in seconds
 
+    prompt = PROMPT_TEMPLATE_FULL if reasoning_enabled else PROMPT_TEMPLATE_RATING_ONLY
+
     while retries < max_retries:
         try:
-            prompt = PROMPT_TEMPLATE.format(title=title, lyric=lyric)
+            formatted_prompt = prompt.format(title=title, lyric=lyric)
             result_text = None
             
             if model_name == "Gemini":
                 model = genai.GenerativeModel('gemini-1.5-flash')
-                response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                response = model.generate_content(formatted_prompt, generation_config={"response_mime_type": "application/json"})
                 result_text = response.text
             elif model_name == "DeepSeek":
                 response = client.chat.completions.create(
                     model="deepseek-chat",
                     messages=[
-                        {"role": "user", "content": prompt},
+                        {"role": "user", "content": formatted_prompt},
                     ],
                     stream=False
                 )
@@ -93,7 +113,7 @@ def get_rating_from_model(model_name, title, lyric):
             try:
                 result = json.loads(result_text)
                 rating = result.get('rating', 'Tidak Diketahui')
-                reason = result.get('reason', 'Tidak ada alasan yang diberikan.')
+                reason = result.get('reason', 'Alasan tidak diminta.') if reasoning_enabled else 'Alasan tidak diminta.'
                 return rating, reason
             except json.JSONDecodeError:
                 st.error(f"Respons dari {model_name} tidak valid: {result_text}")
@@ -135,7 +155,7 @@ if pasted_data and api_key:
                 lyric = row['Lyric']
                 
                 # Mendapatkan rating dari model AI yang dipilih
-                rating, reason = get_rating_from_model(selected_model, title, lyric)
+                rating, reason = get_rating_from_model(selected_model, title, lyric, reasoning_enabled)
                 
                 # Memperbarui DataFrame dengan data baru
                 df.at[index, 'Predicted Rating'] = rating
